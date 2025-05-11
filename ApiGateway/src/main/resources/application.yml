@@ -1,0 +1,163 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: API-GATEWAY
+
+  cloud:
+    gateway:
+      routes:
+        - id: USER-SERVICE
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: USER-SERVICE
+                fallbackUri: forward:/userServiceFallback
+
+        - id: PRODUCT-SERVICE
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: PRODUCT-SERVICE
+                fallbackUri: forward:/productServiceFallback
+
+        - id: RATING-SERVICE
+          uri: lb://RATING-SERVICE
+          predicates:
+            - Path=/api/v1/ratings/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: RATING-SERVICE
+                fallbackUri: forward:/ratingServiceFallback
+
+  eureka:
+    instance:
+      prefer-ip-address: true
+    client:
+      fetch-registry: true
+      register-with-eureka: true
+      service-url:
+        defaultZone: http://localhost:8761/eureka
+
+  resilience4j:
+    circuitbreaker:
+      instances:
+        USER-SERVICE:
+          registerHealthIndicator: true
+          slidingWindowType: COUNT_BASED
+          slidingWindowSize: 10
+          minimumNumberOfCalls: 5
+          failureRateThreshold: 50
+          waitDurationInOpenState: 10s
+          permittedNumberOfCallsInHalfOpenState: 3
+          automaticTransitionFromOpenToHalfOpenEnabled: true
+          recordExceptions:
+            - java.util.concurrent.TimeoutException
+            - org.springframework.cloud.gateway.support.NotFoundException
+
+        PRODUCT-SERVICE:
+          registerHealthIndicator: true
+          slidingWindowType: COUNT_BASED
+          slidingWindowSize: 10
+          minimumNumberOfCalls: 5
+          failureRateThreshold: 50
+          waitDurationInOpenState: 10s
+          permittedNumberOfCallsInHalfOpenState: 3
+          automaticTransitionFromOpenToHalfOpenEnabled: true
+          recordExceptions:
+            - java.util.concurrent.TimeoutException
+            - org.springframework.cloud.gateway.support.NotFoundException
+
+        RATING-SERVICE:
+          registerHealthIndicator: true
+          slidingWindowType: COUNT_BASED
+          slidingWindowSize: 10
+          minimumNumberOfCalls: 5
+          failureRateThreshold: 50
+          waitDurationInOpenState: 10s
+          permittedNumberOfCallsInHalfOpenState: 3
+          automaticTransitionFromOpenToHalfOpenEnabled: true
+          recordExceptions:
+            - java.util.concurrent.TimeoutException
+            - org.springframework.cloud.gateway.support.NotFoundException
+
+    retry:
+      instances:
+        USER-SERVICE:
+          maxAttempts: 3
+          waitDuration: 2s
+        PRODUCT-SERVICE:
+          maxAttempts: 3
+          waitDuration: 2s
+        RATING-SERVICE:
+          maxAttempts: 3
+          waitDuration: 2s
+
+    ratelimiter:
+      instances:
+        USER-SERVICE:
+          limitRefreshPeriod: 1s
+          limitForPeriod: 5
+          timeoutDuration: 0
+        PRODUCT-SERVICE:
+          limitRefreshPeriod: 1s
+          limitForPeriod: 5
+          timeoutDuration: 0
+        RATING-SERVICE:
+          limitRefreshPeriod: 1s
+          limitForPeriod: 5
+          timeoutDuration: 0
+
+    bulkhead:
+      instances:
+        USER-SERVICE:
+          maxConcurrentCalls: 10
+          maxWaitDuration: 0
+        PRODUCT-SERVICE:
+          maxConcurrentCalls: 10
+          maxWaitDuration: 0
+        RATING-SERVICE:
+          maxConcurrentCalls: 10
+          maxWaitDuration: 0
+
+    timelimiter:
+      instances:
+        USER-SERVICE:
+          timeoutDuration: 3s
+        PRODUCT-SERVICE:
+          timeoutDuration: 3s
+        RATING-SERVICE:
+          timeoutDuration: 3s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    retries:
+      enabled: true
+    ratelimiters:
+      enabled: true
+    bulkheads:
+      enabled: true
+    timelimiters:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
