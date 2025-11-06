@@ -28,7 +28,7 @@ public class ProductServiceImpl implements ProductService {
             Product savedProduct = productRepository.save(product);
             return modelMapper.map(savedProduct, ProductDto.class);
         } catch (Exception e) {
-            throw new RuntimeException("Error creating product: " + e.getMessage());
+            throw new RuntimeException("Error creating new product: " + e.getMessage());
         }
     }
 
